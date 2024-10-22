@@ -1,0 +1,149 @@
+---
+output:
+  word_document: default
+  html_document: default
+---
+```{r}
+library(tidyverse)
+library(readxl)
+
+Stress_and_Coping_Strategies_of_Nursing_Students_September_26_2024_12_12 <- read_csv("Stress and Coping Strategies of Nursing Students_September 26, 2024_12.12.csv")
+
+Stress_and_Coping1 <-
+  Stress_and_Coping_Strategies_of_Nursing_Students_September_26_2024_12_12 %>% select(Q9:Q19_6)
+
+Stress_and_Coping2 <- na.omit(Stress_and_Coping1)
+
+Stress_and_Coping2 <-
+  Stress_and_Coping2[3:85,]
+
+Stress_and_Coping2 <- 
+  Stress_and_Coping2[1:72,]
+
+
+
+
+for (i in seq_len(ncol(Stress_and_Coping2))){
+  for (j in seq_len(nrow(Stress_and_Coping2))){
+    if (Stress_and_Coping2[j,i] == '1st' || Stress_and_Coping2[j,i] == 'Never'){
+        Stress_and_Coping2[j,i] <- '1'
+    }else if (Stress_and_Coping2[j,i] == '2nd' || Stress_and_Coping2[j,i] == 'Rarely'){
+      Stress_and_Coping2[j,i] <- '2'
+    }else if (Stress_and_Coping2[j,i] == '3rd' || Stress_and_Coping2[j,i] == 'Sometimes'){
+      Stress_and_Coping2[j,i] <- '3'
+    }else if (Stress_and_Coping2[j,i] == '4th' || Stress_and_Coping2[j,i] == 'Frequently'){
+      Stress_and_Coping2[j,i] <- '4'
+    }else if (Stress_and_Coping2[j,i] == '5th' || Stress_and_Coping2[j,i] == 'Always'){
+      Stress_and_Coping2[j,i] <- '5'
+    }
+  }
+}
+
+
+# Convert all columns to numeric
+Stress_and_Coping2 <- Stress_and_Coping2 %>%
+  mutate(across(everything(), ~ as.numeric(as.character(.))))
+
+
+summary(lm(data = Stress_and_Coping2,  formula = Q16_1 ~ Q9 + Q10_1 + Q10_2 + Q10_3 + Q10_4))
+
+library(corrplot)
+## corrplot 0.92 loaded
+library(RColorBrewer)
+Corr_matrix <- cor(Stress_and_Coping2, use = 'everything', method = 'pearson')
+corrplot(Corr_matrix, type="upper", order="hclust",
+col=brewer.pal(n=11, name="RdYlBu"), tl.cex = .5)
+
+```
+
+
+     
+Columns 10 - 15: stress  
+column 9: semester    
+column 16-19: coping    
+    
+Never = 1     
+Rarely = 2   
+Sometimes = 3   
+Frequently = 4    
+Always = 5     
+
+      
+For visualization
+
+## Anova    
+
+Analysis of Variance (ANOVA) is a fundamental statistical method used to determine whether there are significant differences between the means of three or more independent (unrelated) groups. It helps in understanding if the observed variations in data are due to actual differences between groups or merely due to random chance.     
+
+State the Hypotheses:    
+
+Null Hypothesis (H₀): All group means are equal.   
+Alternative Hypothesis (H₁): At least one group mean is different.    
+
+If different groups have different values (for our example, if the semester dictate how much stress they have or how they cope with it)    
+
+
+    
+Anova on Stress Total
+```{r}
+Stress_and_Coping2$Total_Stress <- rowSums(Stress_and_Coping2[,2:24])
+Stress_and_Coping2$Q9_Group <- as.factor(Stress_and_Coping2$Q9) 
+
+Stress_anova <- aov(formula = Total_Stress ~ Q9_Group, data = Stress_and_Coping2)
+
+summary(Stress_anova)
+
+
+TukeyHSD(Stress_anova)
+```
+For Conclusion on Anova and Total Stress, since the F statistic is really low, it shows that the groups have different means. (Semester and Total Stress). The group value dictates the value of total stress.
+Additionally, reject the null hypothesis in favor of the alternative hypothesis that there is a difference in group means.
+
+1- Mean    
+2 - mean    
+etc.     
+
+
+
+
+     
+Anova on Coping Total
+
+```{r Coping Total}
+Stress_and_Coping2$Total_Coping <- rowSums(Stress_and_Coping2[,25:43])
+Coping_anova <- aov(formula = Total_Coping ~ Q9_Group, data = Stress_and_Coping2)
+
+summary(Coping_anova)
+
+TukeyHSD(Coping_anova)
+```
+For Conclusion on Anova with Semester and Total COping, since the F statistic is not really low, it shows that the groups have similar means (Semester and Total Coping). The group value does not dictate the value of total stress.
+Additionally, do not reject the null hypothesis in favor of the alternative hypothesis that there is a difference in group means.
+
+
+## Linear Regression
+
+```{r}
+summary(lm(formula = Total_Coping ~ Q9 + Total_Stress, data = Stress_and_Coping2))
+```
+
+Total_Coping is the response variable in our linear regression problem and Q9(Semester) and Total_Stress are independent variables. Essentially do the values of the independent dictate values for the response variable. Look at the p value being less than .05. The p value for Q9 is high so we do not reject the null hypothesis. P value for total stress was very low so we reject the null hypothesis in favor that total stress and total coping have a significant relationship. 
+
+Null Hypothesis:
+  Slope for the independent variable is equal to zero.      
+Alternative Hypothesis:     
+  Slope for the independent variable is not equal to zero    
+
+```{r}
+Stress_and_Coping4 <- Stress_and_Coping2 %>% select(Q9,Total_Coping, Total_Stress)
+
+Corr_matrix2 <- cor(Stress_and_Coping4, use = 'everything', method = 'pearson')
+corrplot(Corr_matrix2, type="upper", order="hclust",
+col=brewer.pal(n=11, name="RdYlBu"), tl.cex = .5)
+```
+```{r}
+summary1 <- group_by(Stress_and_Coping2, Q9)
+summary1 <- summarise(summary1, mean(Total_Stress), mean(Total_Coping))
+print(summary1)
+```
+
